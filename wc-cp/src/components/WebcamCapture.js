@@ -128,7 +128,7 @@ const WebcamContainer = styled.div`
   position: relative;
   width: 100%;
   height: auto;
-  max-width: 1080px; /* Limit the max width of webcam */
+  max-width: 2000px; /* Limit the max width of webcam */
   margin: 0 auto;   /* Center the webcam container horizontally */
   display: flex;
   justify-content: center; /* Horizontally center the webcam */
@@ -213,7 +213,7 @@ function getVideoConstraints() {
   return {};
 }
 */
-export default function Home() {
+export default function WebcamCapture() {
   const webcamRef = useRef(null);
   const [webcamWidth, setWebcamWidth] = useState(0);
   const [webcamHeight, setWebcamHeight] = useState(0);
@@ -230,7 +230,7 @@ export default function Home() {
   // 更新 Webcam 大小，确保响应式
   const updateWebcamSize = () => {
     const width = window.innerWidth * 0.9; // 设置宽度为视口宽度的 90%
-    const height = width * 9 / 16; // 16:9 的高宽比
+    const height = width; // 16:9 的高宽比
     setWebcamWidth(width);
     setWebcamHeight(height);
   };
@@ -318,14 +318,9 @@ export default function Home() {
     );
   }
 
-  function handleCopyClick(color, type) {
+  function handleCopyClick(color) {
     const successCallback = () => {
-      const message =
-        type === "hex"
-          ? "Hex code copied"
-          : type === "rgb"
-            ? "RGB code copied"
-            : "HSL code copied";
+      const message = `Color Picked`;
       setNotification({ message, visible: true, success: true });
       setTimeout(() => {
         setNotification({ message: "", visible: false });
@@ -343,16 +338,19 @@ export default function Home() {
         setNotification({ message: "", visible: false });
       }, 2000);
     };
+      
+    const colorString = `
+      HEX: ${color.hex}
+      RGB: rgb(${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b})
+      HSL: hsl(${Math.round(color.hsl.hue)}, ${Math.round(color.hsl.saturation * 100)}%, ${Math.round(color.hsl.lightness * 100)}%)
+    `;
 
-    if (type === "hex") {
-      copyToClipboard(color.hex, successCallback, errorCallback);
-    } else if (type === "rgb") {
-      const rgbText = `rgb(${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b})`;
-      copyToClipboard(rgbText, successCallback, errorCallback);
-    } else if (type === "hsl") {
-      const hslText = `hsl(${Math.round(color.hsl.hue)}, ${Math.round(color.hsl.saturation * 100)}%, ${Math.round(color.hsl.lightness * 100)}%)`;
-      copyToClipboard(hslText, successCallback, errorCallback);
-    }
+    copyToClipboard(colorString, successCallback, errorCallback);
+
+    const { r, g, b } = color.rgb;
+    const luminance = color.hsl.lightness;
+    saveColorToBackend(r / 255, g / 255, b / 255, Math.round(luminance)); 
+    
   }
 
   return (
@@ -395,28 +393,16 @@ export default function Home() {
                 <ColorCircle color={color.hex} />
                 <p>
                   {color.hex}
-                  <CopyButton onClick={() => handleCopyClick(color, "hex")}>
-                    Copy
-                  </CopyButton>
                 </p>
                 <p>
                   {`RGB(${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b})`}
-                  <CopyButton onClick={() => handleCopyClick(color, "rgb")}>
-                    Copy
-                  </CopyButton>
                 </p>
-                {/* <p>
-                  {`CMYK(${color.cmyk.c.toFixed(2)}, ${color.cmyk.m.toFixed(
-                    2,
-                  )}, ${color.cmyk.y.toFixed(2)}, ${color.cmyk.k.toFixed(2)})`}
-                  <CopyButton onClick={() => handleCopyClick(color, "cmyk")}>
-                    Copy
-                  </CopyButton>
-                </p> */}
                 <p>
                   {`HSL(${Math.round(color.hsl.hue)}, ${Math.round(color.hsl.saturation * 100)}%, ${Math.round(color.hsl.lightness * 100)}%)`}
-                  <CopyButton onClick={() => handleCopyClick(color, "hsl")}>
-                    Copy
+                </p>
+                <p>
+                  <CopyButton onClick={() => handleCopyClick(color)}>
+                      Pick
                   </CopyButton>
                 </p>
               </ColorBox>
@@ -559,17 +545,41 @@ function copyToClipboard(text) {
   );
 }
 
-function handleCopyClick(color, type) {
-  if (type === "hex") {
-    copyToClipboard(color.hex);
-  } else if (type === "rgb") {
-    const rgbText = `rgb(${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b})`;
-    copyToClipboard(rgbText);
-  } else if (type === "hsl") {
-    const hslText = `hsl( ${Math.round(color.hsl.hue)}, ${Math.round(color.hsl.saturation * 100)}%, ${Math.round(color.hsl.lightness * 100)}% )`;
-    copyToClipboard(hslText);
+// function handleCopyClick(color) {
+//   // 将 HEX、RGB 和 HSL 颜色值合并为一个字符串
+//   const colorString = `
+//     HEX: ${color.hex}
+//     RGB: rgb(${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b})
+//     HSL: hsl(${Math.round(color.hsl.hue)}, ${Math.round(color.hsl.saturation * 100)}%, ${Math.round(color.hsl.lightness * 100)}%)
+//   `;
+
+//   // 调用复制到剪贴板函数
+//   copyToClipboard(colorString);
+//   const { r, g, b } = color.rgb;
+//   const luminance = color.hsl.lightness;
+//   saveColorToBackend(r / 255, g / 255, b / 255, Math.round(luminance)); 
+
+// }
+async function saveColorToBackend(r, g, b, luminance) {
+    const response = await fetch('/api/saveColor', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        r,         // RGB 中的 r 值（范围从 0 到 1）
+        g,         // RGB 中的 g 值（范围从 0 到 1）
+        b,         // RGB 中的 b 值（范围从 0 到 1）
+        luminance, // HSL 中的亮度 L 值（范围从 0 到 1）
+      }),
+    });
+  
+    if (response.ok) {
+      console.log('Color saved to backend');
+    } else {
+      console.error('Failed to save color');
+    }
   }
-}
 
 function rgbToHex(r, g, b) {
   return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
