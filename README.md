@@ -1,7 +1,8 @@
 # Webcam Color Picker for Chromatic Ruins
 
-A Next.js and React.js powered web application designed for the interactive game **Chromatic Ruins**, enabling players to extract real-world colors via webcam and integrate them into gameplay mechanics.
+A Next.js and React.js powered web application designed for the interactive game [**Chromatic Ruins**](https://github.com/dattodigm/4700), enabling players to extract real-world colors via webcam and integrate them into gameplay mechanics.
 
+And the [final version compilable and playable game source code repo](https://github.com/WarrenWang02/new4700V2) of **Chromatic Ruins**
 ## Project Overview
 
 The Webcam ColorPicker tool enhances player immersion by allowing real-time extraction of colors from the player's environment. Colors captured through the webcam directly influence puzzle-solving gameplay within the Unity3D-based game Chromatic Ruins.
@@ -96,4 +97,6 @@ Explore Next.js resources to deepen your understanding:
 - [Learn Next.js](https://nextjs.org/learn)
 
 Feedback and contributions are welcome via the [Next.js GitHub repository](https://github.com/vercel/next.js/).
+
+
 
