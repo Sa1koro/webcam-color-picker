@@ -413,10 +413,10 @@ export default function Home() {
           <CameraSelect
             value={selectedDeviceId}
             onChange={(event) => setSelectedDeviceId(event.target.value)}
-            aria-label="选择摄像头"
+            aria-label="Select camera"
           >
             <option value="">
-              自动（{preferredFacingMode === "environment" ? "后置" : "前置"}优先）
+              Auto ({preferredFacingMode === "environment" ? "Rear" : "Front"} preferred)
             </option>
             {devices.map((device, key) => (
               <option key={device.deviceId} value={device.deviceId}>
@@ -425,7 +425,7 @@ export default function Home() {
             ))}
           </CameraSelect>
           <CameraToggleButton type="button" onClick={toggleFacingCamera}>
-            切换到{preferredFacingMode === "environment" ? "前置" : "后置"}
+            Switch to {preferredFacingMode === "environment" ? "Front" : "Rear"}
           </CameraToggleButton>
         </CameraControls>
         <WebcamContainer>
