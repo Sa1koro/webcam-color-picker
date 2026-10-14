@@ -134,6 +134,33 @@ const WebcamContainer = styled.div`
   justify-content: center; /* Horizontally center the webcam */
 `;
 
+const CameraControls = styled.div`
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+`;
+
+const CameraSelect = styled.select`
+  max-width: 100%;
+  min-width: 220px;
+  padding: 0.5rem;
+  font-size: 1rem;
+`;
+
+const CameraToggleButton = styled.button`
+  background-color: #222;
+  border: none;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  border-radius: 5px;
+  cursor: pointer;
+`;
+
 const Crosshair = styled.div`
   position: absolute;
   top: 50%;
@@ -245,17 +272,63 @@ export default function Home() {
     visible: false,
     success: true,
   });
-  const [deviceId, setDeviceId] = React.useState({});
   const [devices, setDevices] = React.useState([]);
-  const handleDevices = React.useCallback(
-    (mediaDevices) =>
-      setDevices(mediaDevices.filter(({ kind }) => kind === "videoinput")),
-    [setDevices],
-  );
+  const [selectedDeviceId, setSelectedDeviceId] = React.useState("");
+  const [preferredFacingMode, setPreferredFacingMode] =
+    React.useState("environment");
+
+  const enumerateVideoInputs = React.useCallback(async () => {
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices?.enumerateDevices
+    ) {
+      return;
+    }
+    const mediaDevices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = mediaDevices.filter(({ kind }) => kind === "videoinput");
+    setDevices(videoInputs);
+    setSelectedDeviceId((currentDeviceId) =>
+      currentDeviceId &&
+      videoInputs.some((device) => device.deviceId === currentDeviceId)
+        ? currentDeviceId
+        : "",
+    );
+  }, []);
 
   React.useEffect(() => {
-    navigator.mediaDevices.enumerateDevices().then(handleDevices);
-  }, [handleDevices]);
+    if (!isClient) return;
+    enumerateVideoInputs();
+  }, [enumerateVideoInputs, isClient]);
+
+  const findCameraByFacing = React.useCallback(
+    (targetFacingMode) => {
+      const patterns =
+        targetFacingMode === "environment"
+          ? [/back/i, /rear/i, /environment/i, /后/i]
+          : [/front/i, /user/i, /facetime/i, /前/i];
+      return devices.find((device) =>
+        patterns.some((pattern) => pattern.test(device.label || "")),
+      );
+    },
+    [devices],
+  );
+
+  const toggleFacingCamera = React.useCallback(() => {
+    const nextFacingMode =
+      preferredFacingMode === "environment" ? "user" : "environment";
+    setPreferredFacingMode(nextFacingMode);
+
+    const matchedDevice = findCameraByFacing(nextFacingMode);
+    setSelectedDeviceId(matchedDevice?.deviceId || "");
+  }, [findCameraByFacing, preferredFacingMode]);
+
+  const onUserMediaReady = React.useCallback(() => {
+    enumerateVideoInputs();
+  }, [enumerateVideoInputs]);
+
+  const videoConstraints = selectedDeviceId
+    ? { deviceId: { exact: selectedDeviceId } }
+    : { facingMode: preferredFacingMode };
 
   const capture = async () => {
     const imageSrc = webcamRef.current.getScreenshot();
@@ -336,16 +409,25 @@ export default function Home() {
         {notification.message}
       </Notification>
       <Container>
-        <div>
-          {devices.map((device, key) => (
-            <button
-              key={device.deviceId}
-              onClick={() => setDeviceId(device.deviceId)}
-            >
-              {device.label || `Device ${key + 1}`}
-            </button>
-          ))}
-        </div>
+        <CameraControls>
+          <CameraSelect
+            value={selectedDeviceId}
+            onChange={(event) => setSelectedDeviceId(event.target.value)}
+            aria-label="选择摄像头"
+          >
+            <option value="">
+              自动（{preferredFacingMode === "environment" ? "后置" : "前置"}优先）
+            </option>
+            {devices.map((device, key) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label || `Camera ${key + 1}`}
+              </option>
+            ))}
+          </CameraSelect>
+          <CameraToggleButton type="button" onClick={toggleFacingCamera}>
+            切换到{preferredFacingMode === "environment" ? "前置" : "后置"}
+          </CameraToggleButton>
+        </CameraControls>
         <WebcamContainer>
           <Webcam
             audio={false}
@@ -353,7 +435,8 @@ export default function Home() {
             width={webcamWidth}
             height={webcamHeight}
             screenshotFormat="image/jpeg"
-            videoConstraints={{ deviceId }}
+            videoConstraints={videoConstraints}
+            onUserMedia={onUserMediaReady}
           />
           <Crosshair />
         </WebcamContainer>
